@@ -25,6 +25,37 @@ app.get("/api/hello", function (req, res) {
 });
 
 
+let responseObject = {};
+app.get("/api/:date", (req, res) => {
+  let dateString = req.params.date;
+  const date = new Date(dateString);
+  const utcDateString = date.toUTCString();
+  
+  if(dateString.includes("-")) {
+    responseObject.unix = date.getTime();
+    responseObject.utc = utcDateString; 
+  } else {
+    dateString = parseInt(dateString);
+    responseObject.unix = new Date(dateString).getTime();
+    responseObject.utc = new Date(dateString).toUTCString(); 
+  }
+  if(!responseObject["unix"] || !responseObject['utc']) {
+    res.json({error: "Invalid date"});
+  }
+
+  res.json(responseObject);
+});
+
+app.get("/api", (req, res) => {
+  const currentTime = new Date();
+  // const unixTime = Math.floor(currentTime / 1000).getTime();
+  res.json({'unix': currentTime.getTime(), 'utc': currentTime.toLocaleTimeString()});
+});
+
+
+
+
+
 
 // Listen on port set in environment variable or default to 3000
 var listener = app.listen(process.env.PORT || 3000, function () {
