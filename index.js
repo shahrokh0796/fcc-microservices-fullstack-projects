@@ -25,33 +25,29 @@ app.get("/api/hello", function (req, res) {
 });
 
 
-let responseObject = {};
-app.get("/api/:date", (req, res) => {
-  let date_string = req.params.date;
-  const date = new Date(date_string);
-  const utcDateString = date.toUTCString();
-  
-  if(date_string.includes("-")) {
-    responseObject.unix = date.getTime();
-    responseObject.utc = utcDateString; 
+app.get("/api/:date?", (req, res) => {
+  const dateString = req.params.date;
+  let date;
+  if(!dateString) {
+    date = new Date();
+  } else if(isNaN(dateString)) {
+    date = new Date(dateString);
   } else {
-    date_string = parseInt(date_string);
-    responseObject.unix = new Date(date_string).getTime();
-    responseObject.utc = new Date(date_string).toUTCString(); 
-  }
-  if(!responseObject["unix"] || !responseObject['utc']) {
-    res.json({error: "Invalid date"});
-  }
+    date = new Date(parseInt(dateString));
 
-  res.json(responseObject);
+}
+
+  if(date.toString() === "Invalid Date") {
+    res.json({error: "Invalid Date"});
+  } else {
+    res.json({unix: date.getTime(), utc: date.toUTCString()})
+  }
 });
 
 
 
-app.get("/api", (req, res) => {
-  const currentTime = new Date();
-  res.json({'unix': currentTime.getTime(), 'utc': currentTime});
-});
+
+
 
 
 
