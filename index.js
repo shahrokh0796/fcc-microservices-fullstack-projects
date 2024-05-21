@@ -1,4 +1,5 @@
 require('dotenv').config();
+const validUrl = require('valid-url');
 const express = require('express');
 const bodyParser = require('body-parser');
 const shortid = require('shortid');
@@ -21,26 +22,38 @@ app.get('/api/hello', function(req, res) {
   res.json({ greeting: 'hello API' });
 });
 
+
+
 const urlDatabase = {};
 app.post('/api/shorturl', (req, res) => {
-  let originalUrl = req.body.url;
-    if(!originalUrl) {
-      return res.status(400).json({error: "Missing URL in request body"})
+  let original_url = req.body.url;
+    if(!original_url || !validUrl.isWebUri(original_url)) {
+      return res.json({error: "invalid url"})
     }
 
-    const shortUrl = `http://localhost:${port}/${shortid.generate()}`;
-    urlDatabase[shortUrl] = originalUrl;
-    res.json({originalUrl, shortUrl});
+    const short_url = `${shortid.generate()}`;
+    urlDatabase[short_url] = original_url;
+    res.json({original_url, short_url});
   });
 
-  app.get('/:shortUrl', (req, res) => {
-    const { shortUrl } = req.params;
-    const originalUrl = urlDatabase[`http://localhost${port}/${shortUrl}`];
-    if(!originalUrl) {
-      return res.status(404).json({error: 'Short URL not found'});
+  app.get('/:short_url', (req, res) => {
+    const { short_url } = req.params;
+    const original_url = urlDatabase[`/${short_url}`];
+    if(!original_url) {
+      return res.json({error: 'invalid url'});
     }
 
-    res.redirect(originalUrl);
+    res.redirect(original_url);
+  });
+
+  app.get('/api/shorturl/:short_url', (req, res) => {
+    const { short_url } = req.params;
+    const original_url = urlDatabase[short_url];
+    if (!original_url) {
+      return res.json({ error: 'invalid url' });
+    }
+  
+    res.redirect(original_url);
   });
 
 app.listen(port, function() {
