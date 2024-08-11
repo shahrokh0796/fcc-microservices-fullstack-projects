@@ -36,7 +36,7 @@ app.post("/api/users", async (req, res) => {
     const newUser = { username };
     // insert user into the database
     const resullt = await collection.insertOne(newUser);
-    res.status(201).send({ username, userId: resullt.insertedId });
+    res.status(201).send({ username, _id: resullt.insertedId });
   } catch (error) {
     res.status(500).send("Error creating user");
   } finally {
@@ -70,31 +70,32 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   // console.log(typeof _id, "<---type of id", _id);
   // Extract exercise data from the request body
   const { description, duration, date } = req.body;
-
+  const parsedDuration = typeof duration !== 'number' ? parseInt(duration) : duration;
+  
   // Manual validation
   if(!description || typeof description !== 'string' || description.trim() === '') {
     return res.status(400).send({error: 'Description is required and must not be an empty string'});
   }
 
-  if(!duration || isNaN(duration) || duration <= 0) {
-    return res.status(400).send({error: "Duration is required and must be a positive interger"});
+  if(!parsedDuration || isNaN(parsedDuration) || parsedDuration <= 0) {
+    return res.status(400).send({error: "Duration is required and must be a positive integer"});
   }
 
   // If no date provided, use the current data
-  const exerciseDate = date ? new Date(date) : new Date().toDateString();
+  const exerciseDate = date ? new Date(date).toDateString() : new Date().toDateString();
 
   try {
     // check if the user exists
     const user = await collection.findOne({_id: new ObjectId(_id)});
     if(!user) {
       return res.status(404).send({error: "User not found."}); // Not found status
-    }
+    } else {
 
     // if the user exists, create the exercise object
     const exercise = {
       username: user.username,
       description,
-      duration,
+      duration: parsedDuration,
       date: exerciseDate,
       userId: _id
     }
@@ -103,15 +104,19 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     const exercisesCollection = client.db('exerciseTrackerDB').collection("exercises");
     // insert exercise into the exercise collection
      const result = await exercisesCollection.insertOne(exercise);
-    // console.log(result, "<---- ");
+    // console.log(result, "<----result ");
+    
     res.status(201).send({
-      _id: result.insertedId,
-      exercise: {
+      username: user.username,
+      ...{
         description,
-        duration,
-        date: exerciseDate.toString(),
-      }
+        duration: parsedDuration,
+        date: new Date(exerciseDate).toDateString(),
+      },
+      _id: result.insertedId
     });
+  }
+  
   } catch(error) {
     // Log the error for debugging
     console.error("Error adding exercise: ", error);
@@ -140,7 +145,7 @@ app.get("/api/users/:_id/logs", async (req, res) => {
     }
 
     let filter = { userId: _id };
-    console.log(typeof filter.userId, "<---------typ of userId");
+    // console.log(typeof filter.userId, "<---------typ of userId");
     let dateFilter = {};
     if(from) {
       dateFilter['$gte'] = new Date(from);
@@ -154,19 +159,21 @@ app.get("/api/users/:_id/logs", async (req, res) => {
     }
 
    limit = limit ? parseInt(limit) : 100;
-   console.log(filter, "<----------filter");
+  //  console.log(filter, "<----------filter");
     // Get exercises from the user
     const exercisesCollection = client.db('exerciseTrackerDB').collection("exercises");
     // const exercises = await exercisesCollection.find({ userId: _id }).toArray();
     const exercises = await exercisesCollection.find(filter).limit(limit).toArray();
-    console.log(exercises, "<------exercises");
+    // console.log(exercises, "<------exercises");
     // Prepare log array
     const log = exercises.map((exercise) => ({
       description: exercise.description,
       duration: exercise.duration,
-      date: exercise.date.toString() // Convert date to string
+      date: new Date(exercise.date).toDateString() // Convert date to string
     }));
 
+    console.log(typeof log[0].date, typeof log[0].description,  "<---types");
+    console.log(typeof log[0].duration, "Type of duration");
     // Create the response object
 
     res.send({
@@ -175,13 +182,7 @@ app.get("/api/users/:_id/logs", async (req, res) => {
       _id,
       log
     });
-    // const response = {
-    //   username: user.username,
-    //   count: log.length,
-    //   _id: user._id,
-    //   log
-    // }
-    // res.status(200).send(response);
+    
 
   } catch(error) {
     console.log(" Error retrieving user log:  ", error);
@@ -199,7 +200,7 @@ async function main() {
     // connect to db for any iniitial setup if needed
     const client = await connectToDB();
     // Perform any initial setup or checks here if necessary
-    const listener = app.listen(process.env.PORT || 3000, () => {
+    const listener = app.listen(process.env.PORT || 3000, () => { 
       console.log('Your app is listening on port ' + listener.address().port)
     });
   } catch (error) {
