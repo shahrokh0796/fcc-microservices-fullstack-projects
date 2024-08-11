@@ -25,10 +25,11 @@ async function connectToDB() {
     return client;
   } catch(error) {
     console.log(error, "<-----error from dbConnection.js line 27");
-  }finally {
+  }
+  // finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
-  }
+  // }
 }
 connectToDB().catch(console.dir);
 

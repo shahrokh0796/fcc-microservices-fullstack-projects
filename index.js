@@ -87,7 +87,6 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     // check if the user exists
     const user = await collection.findOne({_id: new ObjectId(_id)});
     if(!user) {
-
       return res.status(404).send({error: "User not found."}); // Not found status
     }
 
@@ -97,15 +96,22 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
       description,
       duration,
       date: exerciseDate,
-      _id
+      userId: _id
     }
 
     // Insert the exercise data into the database using a separate exercise collection
     const exercisesCollection = client.db('exerciseTrackerDB').collection("exercises");
     // insert exercise into the exercise collection
-     await exercisesCollection.insertOne(exercise);
+     const result = await exercisesCollection.insertOne(exercise);
     // console.log(result, "<---- ");
-    res.status(201).send({...exercise});
+    res.status(201).send({
+      _id: result.insertedId,
+      exercise: {
+        description,
+        duration,
+        date: exerciseDate.toString(),
+      }
+    });
   } catch(error) {
     // Log the error for debugging
     console.error("Error adding exercise: ", error);
@@ -120,40 +126,62 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 // GET request to /api/users/:_id/logs
 app.get("/api/users/:_id/logs", async (req, res) => {
 
-  const client = await connectToDB();
-  try {
-    
-    const userCollection = client.db("exerciseTrackerDB").collection("exTrackerCollection");
-    const {_id} = req.params;
+  let { from, to, limit } = req.query;
 
-    
-    const user = await userCollection.findOne({_id: new ObjectId(_id)});
+  const client = await connectToDB();
+  const collection = client.db("exerciseTrackerDB").collection("exTrackerCollection");
+  const { _id } = req.params;
+  try {
+    // check if the user exists
+    const user = await collection.findOne({_id: new ObjectId(_id)});
     if(!user) {
       // Not found status
       return res.status(404).send({ error: "User not found."});
     }
 
+    let filter = { userId: _id };
+    console.log(typeof filter.userId, "<---------typ of userId");
+    let dateFilter = {};
+    if(from) {
+      dateFilter['$gte'] = new Date(from);
+    }
+    if(to) {
+      dateFilter["$lte"] = new Date(to);
+    }
+
+    if(from || to) {
+      filter.date = dateFilter;
+    }
+
+   limit = limit ? parseInt(limit) : 100;
+   console.log(filter, "<----------filter");
     // Get exercises from the user
     const exercisesCollection = client.db('exerciseTrackerDB').collection("exercises");
-    const exercises = await exercisesCollection.find({ _id }).toArray();
+    // const exercises = await exercisesCollection.find({ userId: _id }).toArray();
+    const exercises = await exercisesCollection.find(filter).limit(limit).toArray();
     console.log(exercises, "<------exercises");
     // Prepare log array
     const log = exercises.map((exercise) => ({
       description: exercise.description,
       duration: exercise.duration,
-      date: exercise.date // Convert date to string
+      date: exercise.date.toString() // Convert date to string
     }));
 
     // Create the response object
 
-    const response = {
+    res.send({
       username: user.username,
       count: log.length,
-      _id: user._id,
+      _id,
       log
-    }
-
-    res.status(200).send(response);
+    });
+    // const response = {
+    //   username: user.username,
+    //   count: log.length,
+    //   _id: user._id,
+    //   log
+    // }
+    // res.status(200).send(response);
 
   } catch(error) {
     console.log(" Error retrieving user log:  ", error);
