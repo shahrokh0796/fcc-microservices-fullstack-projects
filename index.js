@@ -106,7 +106,16 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
      const result = await exercisesCollection.insertOne(exercise);
     // console.log(result, "<----result ");
     
-    res.status(201).send({
+    // res.status(201).send({
+    //   username: user.username,
+    //   ...{
+    //     description,
+    //     duration: parsedDuration,
+    //     date: new Date(exerciseDate).toDateString(),
+    //   },
+    //   _id: result.insertedId
+    // });
+    res.json({
       username: user.username,
       ...{
         description,
@@ -171,9 +180,8 @@ app.get("/api/users/:_id/logs", async (req, res) => {
       duration: exercise.duration,
       date: new Date(exercise.date).toDateString() // Convert date to string
     }));
-
-    console.log(typeof log[0].date, typeof log[0].description,  "<---types");
-    console.log(typeof log[0].duration, "Type of duration");
+    // console.log(typeof log[0].date, typeof log[0].description,  "<---types");
+    // console.log(typeof log[0].duration, "Type of duration");
     // Create the response object
 
     res.send({
